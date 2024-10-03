@@ -145,71 +145,72 @@ def kernest_opastaa_apinaa():
         root.after(1000, lambda: k_anna_lapio(closest_apina, apina_image))
 
 # Lisätään uusi nappi kaivamisen aloittamiseksi
+# Hiekka väri
+def get_sand_color(depth):
+    """Määritä hiekan väri syvyyden mukaan."""
+    if depth == 1:
+        return "#D1A55D"  # Pinnallinen hiekkakerros
+    elif depth == 0:
+        return "#B5944D"  # Ensimmäinen kaivettu kerros
+    elif depth == -1:
+        return "#A07D3D"  # Syvempi kerros
+    else:
+        return "#8B6B2D"  # Syvin kerros
+
 def kaivaa(apina):
     if apina['ojalla']:
         if apina['has_shovel']:
-            if 'nimi' in apina:
-                if apina['nimi'] == 'Ernesti':
-                    oja_matriisi = ernestin_oja_matriisi
-                    oja_x1 = ernest_ojan_x1
-                    oja_y1 = ernest_ojan_y1
-                elif apina['nimi'] == 'Kernesti':
-                    oja_matriisi = kernestin_oja_matriisi
-                    oja_x1 = kernest_ojan_x1
-                    oja_y1 = kernest_ojan_y1
+            oja_matriisi = ernestin_oja_matriisi if apina['nimi'] == 'Ernesti' else kernestin_oja_matriisi
+            oja_x1 = ernest_ojan_x1 if apina['nimi'] == 'Ernesti' else kernest_ojan_x1
+            oja_y1 = ernest_ojan_y1 if apina['nimi'] == 'Ernesti' else kernest_ojan_y1
+
+            oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
+
+            if oja_index is not None and oja_index < len(oja_matriisi):
+                # Tarkista syvyys
+                current_depth = oja_matriisi[oja_index][0]
+
+                if current_depth > -1:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -1
+                    # Oja on "hiekkaa", apina voi kaivaa
+                    oja_matriisi[oja_index][0] -= 1  # Vähennetään arvoa, jotta se merkitsee kaivettua
+                    print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
+
+                    # Muuta hiekan väriä syvyyden mukaan
+                    depth = oja_matriisi[oja_index][0]  # Käytetään matriisin arvoa syvyyden määrittämiseen
+                    kaivetun_osan_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Laske y-koordinaatti
+                    current_color = get_sand_color(depth)  # Hae hiekan väri syvyyden mukaan
+                    canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 5, kaivetun_osan_y + (100 / len(oja_matriisi)), fill=current_color, outline="")
+
                 else:
-                    print("Tuntematon apina!")
-                    return
+                    # Oja on jo kaivettu tai syvyys on negatiivinen
+                    print(f"{apina['nimi']} ei voi kaivaa enää, oja on jo valmis kohdassa {oja_index}.")
 
-                oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
+                # Vähennä indeksiä
+                apina['kaivamis_index'] += 1
 
-                # Tarkistetaan, onko oja_index kelvollinen
-                if oja_index is not None and oja_index < len(oja_matriisi):
-                    if oja_matriisi[oja_index][0] == 1:
-                        # Oja on "hiekkaa", apina voi kaivaa
-                        oja_matriisi[oja_index][0] = 0
-                        winsound.Beep(1000, 100)
-                        print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
+                # Ajan laskeminen
+                kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))
+                if kaivamis_aika > 30:
+                    kaivamis_aika = 30
 
-                    elif oja_matriisi[oja_index][0] == 0:
-                        # Oja on jo kaivettu, mutta apina voi kaivaa syvemmälle
-                        print(f"{apina['nimi']} kaivaa syvempää kohdasta {oja_index}.")
-                        oja_matriisi[oja_index][0] -= 1  # Syvyys syvenee
-                        winsound.Beep(800, 100)
-
-                    elif oja_matriisi[oja_index][0] < 0:
-                        # Syvemmälle kaivaminen
-                        print(f"{apina['nimi']} kaivaa syvempää kohdasta {oja_index}.")
-                        oja_matriisi[oja_index][0] -= 1
-                        winsound.Beep(800, 100)
-
+                # Tarkista, onko kaivaminen valmis
+                if apina['kaivamis_index'] >= len(oja_matriisi):
+                    # Tarkista, onko koko oja kaivettu (kaikki 0 tai pienempiä)
+                    if all(section[0] <= 0 for section in oja_matriisi):
+                        # Muuta koko oja siniseksi, kun kaikki on kaivettu
+                        for i in range(len(oja_matriisi)):
+                            kaivetun_osan_y = oja_y1 - (i * (100 / len(oja_matriisi)))  # Laske y-koordinaatti
+                            canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 20, kaivetun_osan_y + (100 / len(oja_matriisi)), fill="blue", outline="")
+                        print(f"{apina['nimi']} on valmis kaivamisessa. Kaikki on kaivettu!")
                     else:
-                        print(f"{apina['nimi']} ei voi enää kaivaa, oja on jo valmis kohdassa {oja_index}.")
-                    
-                    # Siirrä apina ojan varrella
-                    uusi_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Skaalataan y-koordinaatti
-                    canvas.coords(apina['image'], oja_x1, uusi_y)  # Siirretään apina ojalle
-                    
-                    # Vähennä indeksiä
-                    apina['kaivamis_index'] += 1
+                        print(f"{apina['nimi']} on valmis kaivamisessa, mutta kaikki ojan osat eivät ole kaivettu vielä.")
 
-                    # Ajan laskeminen
-                    kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))
-                    if kaivamis_aika > 30:
-                        kaivamis_aika = 30
-
+                else:
                     # Odota kaivamisajan verran käyttäen after-funktiota
                     root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
-                    
-                else:
-                    print(f"{apina['nimi']} on valmis kaivamisessa.")
-            else:
-                print("Apinalla ei ole nimeä!")
-        else:
-            print(f"{apina['nimi']} ei voi kaivaa, koska sillä ei ole lapio.")
-    else:
-        print(f"{apina['nimi']} ei ole ojalla.")
 
+            else:
+                print(f"{apina['nimi']} on valmis kaivamisessa.")
 
 def e_anna_lapio(apina, apina_image):
     # Anna apinalle lapio
