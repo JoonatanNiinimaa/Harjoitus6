@@ -12,11 +12,11 @@ root.geometry("1200x800")
 
 # Kuvien lataaminen ja koon muokkaaminen
 try:
-    saari_img = PhotoImage(file="saari.png")
-    ernesti_img = PhotoImage(file="erne.png").subsample(4, 4)
-    kernesti_img = PhotoImage(file="kerne.png").subsample(4, 4)
-    viidakko_img = PhotoImage(file="viidakko.png").subsample(7, 7)  # Pienennetään viidakko.png kuvaa
-    monkey_img = PhotoImage(file="monkey.png").subsample(5, 5)  # Apinan kuva, pienennetään hieman
+    saari_img = PhotoImage(file="saari.png").subsample(2,2)
+    ernesti_img = PhotoImage(file="erne.png").subsample(6, 6)
+    kernesti_img = PhotoImage(file="kerne.png").subsample(6, 6)
+    viidakko_img = PhotoImage(file="viidakko.png").subsample(12, 12)  # Pienennetään viidakko.png kuvaa
+    monkey_img = PhotoImage(file="monkey.png").subsample(6, 6)  # Apinan kuva, pienennetään hieman
 except Exception as e:
     print(f"Virhe kuvien lataamisessa: {e}")
     root.destroy()
@@ -30,10 +30,10 @@ canvas.pack()
 canvas.create_image(600, 400, image=saari_img)
 
 # Uima-allas (muutettu väri kuvaamaan tyhjää allasta)
-uima_allas_x1 = 450  # X-koordinaatti siirretty vasemmalle
-uima_allas_y1 = 250  # Y-koordinaatti siirretty alemmaksi
-uima_allas_x2 = uima_allas_x1 + 300  # 300 pikseliä leveä allas
-uima_allas_y2 = uima_allas_y1 + 150  # 150 pikseliä korkea allas
+uima_allas_x1 = 575  # X-koordinaatti siirretty vasemmalle
+uima_allas_y1 = 375  # Y-koordinaatti siirretty alemmaksi
+uima_allas_x2 = uima_allas_x1 + 60  # 60 pikseliä leveä allas
+uima_allas_y2 = uima_allas_y1 + 20  # 20 pikseliä korkea allas
 canvas.create_rectangle(uima_allas_x1, uima_allas_y1, uima_allas_x2, uima_allas_y2, fill="sandy brown", outline="brown")  # Tyhjä allas beige
 
 # Luodaan uima-allas matriisina (20x60, aluksi kaikki arvot ovat nollia)
@@ -58,7 +58,7 @@ kernest_ojan_y2 = kernest_ojan_y1 - 100  # Oja on 100 pikseliä pitkä ja menee 
 canvas.create_line(kernest_ojan_x1, kernest_ojan_y1, kernest_ojan_x2, kernest_ojan_y2, fill="sandy brown", width=2)
 
 # Lisätään metsäalueet saarelle kolmessa kohtaa käyttäen viidakko.png kuvaa
-metsan_paikat = [(230, 250), (900, 300), (800, 500)]  # Sijainnit metsäalueille
+metsan_paikat = [(425, 325), (775, 300), (750, 420)]  # Sijainnit metsäalueille
 for (x, y) in metsan_paikat:
     canvas.create_image(x, y, image=viidakko_img)
 
@@ -74,7 +74,7 @@ apina_lkm = 10  # Määrä apinoita, voi muuttaa
 
 for i in range(apina_lkm):
     metsa_x, metsa_y = random.choice(metsan_paikat)  # Valitaan satunnaisesti metsäalue
-    apinan_pos = (metsa_x + random.randint(-50, 50), metsa_y + random.randint(-50, 50))  # Pieni satunnaisuus sijaintiin
+    apinan_pos = (metsa_x + random.randint(-50, 50), metsa_y + random.randint(-30, 30))  # Pieni satunnaisuus sijaintiin
     apina = canvas.create_image(*apinan_pos, image=monkey_img)
     apinat.append({'image': apina, 'has_shovel': False, 'ojalla': False, 'kaivamis_index': None})  # Apinan kuva, lapion tila ja kaivamisen indeksi
 
@@ -146,41 +146,62 @@ def kernest_opastaa_apinaa():
 
 # Lisätään uusi nappi kaivamisen aloittamiseksi
 def kaivaa(apina):
-    oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
-    if oja_index is not None and oja_index < len(ernestin_oja_matriisi):  # Kunnes kaivamme koko ojan
-        # Varmista, että oja on vielä "hiekkaa" (arvo 1)
-        if ernestin_oja_matriisi[oja_index][0] == 1:
-            # Muutetaan ojan arvo nollaksi
-            ernestin_oja_matriisi[oja_index][0] = 0
+    # Valitaan oikea oja sen mukaan, onko kyseessä Ernesti vai Kernesti
+    if apina['ojalla']:
+        if apina['has_shovel']:
+            if 'nimi' in apina:
+                if apina['nimi'] == 'Ernesti':
+                    oja_matriisi = ernestin_oja_matriisi
+                    oja_x1 = ernest_ojan_x1
+                    oja_y1 = ernest_ojan_y1
+                elif apina['nimi'] == 'Kernesti':
+                    oja_matriisi = kernestin_oja_matriisi
+                    oja_x1 = kernest_ojan_x1
+                    oja_y1 = kernest_ojan_y1
+                else:
+                    print("Tuntematon apina!")
+                    return
+                
+                oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
+                if oja_index is not None and oja_index < len(oja_matriisi):  # Kunnes kaivamme koko ojan
+                    # Varmista, että oja on vielä "hiekkaa" (arvo 1)
+                    if oja_matriisi[oja_index][0] == 1:
+                        oja_matriisi[oja_index][0] = 0
+                        winsound.Beep(1000, 100)  # Esimerkiksi 1000 Hz 100 ms
+                        print(f"{apina['nimi']} kaivoi ojan kohdasta: {oja_index}")
+                        
+                        # Siirrä apina ojan varrella
+                        uusi_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Skaalataan y-koordinaatti
+                        canvas.coords(apina['image'], oja_x1, uusi_y)  # Siirretään apina ojalle
+                        
+                        # Vähennä indeksiä
+                        apina['kaivamis_index'] += 1  # Lisää indeksiä, että seuraava askel ylös
 
-            # Soita ääni
-            winsound.Beep(1000, 100)  # Esimerkiksi 1000 Hz 100 ms
-            print(f"Kaivettu ojan kohdasta: {oja_index}")
+                        # Ajan laskeminen väsymisen mukaan
+                        kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))  # Jokaisen seuraavan metrin kaivamiseen menee kaksinkertainen aika
 
-            # Siirrä apina ojan varrella
-            uusi_y = ernest_ojan_y1 - (oja_index * (100 / len(ernestin_oja_matriisi)))  # Skaalataan y-koordinaatti
-            canvas.coords(apina['image'], ernest_ojan_x1, uusi_y)  # Siirretään apina ojalle
+                        # Rajaa kaivamis_aika maksimiin, esimerkiksi 30 sekuntiin
+                        if kaivamis_aika > 30:
+                            kaivamis_aika = 30
 
-            # Vähennä indeksiä
-            apina['kaivamis_index'] += 1  # Lisää indeksiä, että seuraava askel ylös
-            
-            # Ajan laskeminen väsymisen mukaan
-            kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))  # Jokaisen seuraavan metrin kaivamiseen menee kaksinkertainen aika
-            
-            # Rajaa kaivamis_aika maksimiin, esimerkiksi 30 sekuntiin
-            if kaivamis_aika > 30:
-                kaivamis_aika = 30
-
-            # Odota apinan kaivamisajan verran käyttäen after-funktiota
-            root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
+                        # Odota apinan kaivamisajan verran käyttäen after-funktiota
+                        root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
+                    else:
+                        print(f"{apina['nimi']} ei voi enää kaivaa, oja on jo valmis kohdassa {oja_index}.")
+                else:
+                    print(f"{apina['nimi']} on valmis kaivamisessa.")
+            else:
+                print("Apinalla ei ole nimeä!")
         else:
-            print("Oja on jo kaivettu, ei voida kaivaa.")
+            print(f"{apina['nimi']} ei voi kaivaa, koska sillä ei ole lapio.")
     else:
-        print("Kaivaminen valmis.")
+        print(f"{apina['nimi']} ei ole ojalla.")
+
 
 def e_anna_lapio(apina, apina_image):
     # Anna apinalle lapio
     apina['has_shovel'] = True
+    apina['nimi'] = 'Ernesti'  # Aseta apinan nimi
     print("Apina on saanut lapion:", apina)
 
     # Merkitse apina ojalla olevan ja tallenna indeksi
@@ -198,6 +219,7 @@ def k_anna_lapio(apina, apina_image):
     # Anna apinalle lapio
     apina['has_shovel'] = True
     print("Apina on saanut lapion:", apina)
+    apina['nimi'] = 'Kernesti'  # Aseta apinan nimi
 
     # Merkitse apina ojalla olevan ja tallenna indeksi
     apina['ojalla'] = True  # Apina on nyt ojalla
@@ -212,19 +234,20 @@ def k_anna_lapio(apina, apina_image):
 # Aloita kaivaminen
 def e_aloita_kaivaminen():
     for apina in apinat:
-        if apina['has_shovel'] and apina['ojalla']:  # Tarkista, onko apinalla lapio ja että se on ojalla
+        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Ernesti':  # Tarkista, että apina on Ernestin apina
             apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
             kaivaa(apina)  # Aloita kaivaminen
-        else:
-            print("Ei yhtään apinaa, jolla on lapio.")
+            return  # Lopeta silmukka, kun ensimmäinen löytynyt apina alkaa kaivaa
+    print("Ei yhtään Ernestin apinaa, jolla on lapio.")  # Viesti, jos ei löydy apinoita, joilla on lapio
 
 def k_aloita_kaivaminen():
     for apina in apinat:
-        if apina['has_shovel'] and apina['ojalla']:  # Tarkista, onko apinalla lapio ja että se on ojalla
+        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Kernesti':  # Tarkista, että apina on Ernestin apina
             apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
             kaivaa(apina)  # Aloita kaivaminen
-        else:
-            print("Ei yhtään apinaa, jolla on lapio.")
+            return  # Lopeta silmukka, kun ensimmäinen löytynyt apina alkaa kaivaa
+    print("Ei yhtään Kernestin apinaa, jolla on lapio.")  # Viesti, jos ei löydy apinoita, joilla on lapio
+
 
 # Tarkista ojalla olevat apinat
 def tarkista_ojalla_olevat_apinat():
@@ -238,21 +261,23 @@ def tarkista_ojalla_olevat_apinat():
 
 # Lisää nappi tarkistaakseen ojalla olevat apinat
 tarkista_button = tk.Button(root, text="Tarkista ojalla olevat apinat", command=tarkista_ojalla_olevat_apinat)
-tarkista_button.pack(pady=20)  # Lisätään painike ikkunaan
+canvas.create_window(600, 200, window=tarkista_button)
 
 # Ernesti opastaa apinaa
-opasta_apinaa_button = tk.Button(root, text="Ernesti hakee apinan ja antaa lapio", command=ernest_opastaa_apinaa)
-opasta_apinaa_button.pack(pady=20)  # Lisätään painike ikkunaan
+e_opasta_apinaa_button = tk.Button(root, text="Ernesti hakee apinan ja antaa lapio", command=ernest_opastaa_apinaa)
+canvas.create_window(350, 150, window=e_opasta_apinaa_button)
+
 # Lisätään kaivamispainike
-kaiva_button = tk.Button(root, text="Aloita Ernestin ojan kaivaminen", command=lambda: e_aloita_kaivaminen())
-kaiva_button.pack(pady=20)  # Lisätään kaivamispainike
+e_kaiva_button = tk.Button(root, text="Aloita Ernestin ojan kaivaminen", command=lambda: e_aloita_kaivaminen())
+canvas.create_window(350, 200, window=e_kaiva_button)
 
 # Kernesti opastaa apinaa
-opasta_apinaa_button = tk.Button(root, text="Kernesti hakee apinan ja antaa lapio", command=kernest_opastaa_apinaa)
-opasta_apinaa_button.pack(pady=20)  # Lisätään painike ikkunaan
+k_opasta_apinaa_button = tk.Button(root, text="Kernesti hakee apinan ja antaa lapio", command=kernest_opastaa_apinaa)
+canvas.create_window(900, 150, window=k_opasta_apinaa_button)
+
 # Lisätään kaivamispainike
-kaiva_button = tk.Button(root, text="Aloita Kernestin ojan kaivaminen", command=lambda: k_aloita_kaivaminen())
-kaiva_button.pack(pady=20)  # Lisätään kaivamispainike
+k_kaiva_button = tk.Button(root, text="Aloita Kernestin ojan kaivaminen", command=lambda: k_aloita_kaivaminen())
+canvas.create_window(900, 200, window=k_kaiva_button)
 
 root.mainloop()
 
