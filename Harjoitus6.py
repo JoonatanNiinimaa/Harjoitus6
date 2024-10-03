@@ -70,7 +70,7 @@ kernesti = canvas.create_image(*kernesti_pos, image=kernesti_img)
 
 # Apinat metsään
 apinat = []
-apina_lkm = 10  # Määrä apinoita, voi muuttaa
+apina_lkm = 100  # Määrä apinoita, voi muuttaa
 
 for i in range(apina_lkm):
     metsa_x, metsa_y = random.choice(metsan_paikat)  # Valitaan satunnaisesti metsäalue
@@ -146,7 +146,6 @@ def kernest_opastaa_apinaa():
 
 # Lisätään uusi nappi kaivamisen aloittamiseksi
 def kaivaa(apina):
-    # Valitaan oikea oja sen mukaan, onko kyseessä Ernesti vai Kernesti
     if apina['ojalla']:
         if apina['has_shovel']:
             if 'nimi' in apina:
@@ -161,33 +160,47 @@ def kaivaa(apina):
                 else:
                     print("Tuntematon apina!")
                     return
-                
+
                 oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
-                if oja_index is not None and oja_index < len(oja_matriisi):  # Kunnes kaivamme koko ojan
-                    # Varmista, että oja on vielä "hiekkaa" (arvo 1)
+
+                # Tarkistetaan, onko oja_index kelvollinen
+                if oja_index is not None and oja_index < len(oja_matriisi):
                     if oja_matriisi[oja_index][0] == 1:
+                        # Oja on "hiekkaa", apina voi kaivaa
                         oja_matriisi[oja_index][0] = 0
-                        winsound.Beep(1000, 100)  # Esimerkiksi 1000 Hz 100 ms
-                        print(f"{apina['nimi']} kaivoi ojan kohdasta: {oja_index}")
-                        
-                        # Siirrä apina ojan varrella
-                        uusi_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Skaalataan y-koordinaatti
-                        canvas.coords(apina['image'], oja_x1, uusi_y)  # Siirretään apina ojalle
-                        
-                        # Vähennä indeksiä
-                        apina['kaivamis_index'] += 1  # Lisää indeksiä, että seuraava askel ylös
+                        winsound.Beep(1000, 100)
+                        print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
 
-                        # Ajan laskeminen väsymisen mukaan
-                        kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))  # Jokaisen seuraavan metrin kaivamiseen menee kaksinkertainen aika
+                    elif oja_matriisi[oja_index][0] == 0:
+                        # Oja on jo kaivettu, mutta apina voi kaivaa syvemmälle
+                        print(f"{apina['nimi']} kaivaa syvempää kohdasta {oja_index}.")
+                        oja_matriisi[oja_index][0] -= 1  # Syvyys syvenee
+                        winsound.Beep(800, 100)
 
-                        # Rajaa kaivamis_aika maksimiin, esimerkiksi 30 sekuntiin
-                        if kaivamis_aika > 30:
-                            kaivamis_aika = 30
+                    elif oja_matriisi[oja_index][0] < 0:
+                        # Syvemmälle kaivaminen
+                        print(f"{apina['nimi']} kaivaa syvempää kohdasta {oja_index}.")
+                        oja_matriisi[oja_index][0] -= 1
+                        winsound.Beep(800, 100)
 
-                        # Odota apinan kaivamisajan verran käyttäen after-funktiota
-                        root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
                     else:
                         print(f"{apina['nimi']} ei voi enää kaivaa, oja on jo valmis kohdassa {oja_index}.")
+                    
+                    # Siirrä apina ojan varrella
+                    uusi_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Skaalataan y-koordinaatti
+                    canvas.coords(apina['image'], oja_x1, uusi_y)  # Siirretään apina ojalle
+                    
+                    # Vähennä indeksiä
+                    apina['kaivamis_index'] += 1
+
+                    # Ajan laskeminen
+                    kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))
+                    if kaivamis_aika > 30:
+                        kaivamis_aika = 30
+
+                    # Odota kaivamisajan verran käyttäen after-funktiota
+                    root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
+                    
                 else:
                     print(f"{apina['nimi']} on valmis kaivamisessa.")
             else:
@@ -233,21 +246,30 @@ def k_anna_lapio(apina, apina_image):
 
 # Aloita kaivaminen
 def e_aloita_kaivaminen():
+    kaivettavat_apinat = []  # Lista kaivettavista apinoista
     for apina in apinat:
-        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Ernesti':  # Tarkista, että apina on Ernestin apina
+        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Ernesti':
+            kaivettavat_apinat.append(apina)  # Lisää kaivettavat apinat listaan
+
+    if kaivettavat_apinat:
+        for apina in kaivettavat_apinat:
             apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
-            kaivaa(apina)  # Aloita kaivaminen
-            return  # Lopeta silmukka, kun ensimmäinen löytynyt apina alkaa kaivaa
-    print("Ei yhtään Ernestin apinaa, jolla on lapio.")  # Viesti, jos ei löydy apinoita, joilla on lapio
+            kaivaa(apina)  # Aloita kaivaminen jokaiselle apinalle
+    else:
+        print("Ei yhtään Ernestin apinaa, jolla on lapio.")
 
 def k_aloita_kaivaminen():
+    kaivettavat_apinat = []  # Lista kaivettavista apinoista
     for apina in apinat:
-        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Kernesti':  # Tarkista, että apina on Ernestin apina
-            apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
-            kaivaa(apina)  # Aloita kaivaminen
-            return  # Lopeta silmukka, kun ensimmäinen löytynyt apina alkaa kaivaa
-    print("Ei yhtään Kernestin apinaa, jolla on lapio.")  # Viesti, jos ei löydy apinoita, joilla on lapio
+        if apina['has_shovel'] and apina['ojalla'] and apina['nimi'] == 'Kernesti':
+            kaivettavat_apinat.append(apina)  # Lisää kaivettavat apinat listaan
 
+    if kaivettavat_apinat:
+        for apina in kaivettavat_apinat:
+            apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
+            kaivaa(apina)  # Aloita kaivaminen jokaiselle apinalle
+    else:
+        print("Ei yhtään Ernestin apinaa, jolla on lapio.")
 
 # Tarkista ojalla olevat apinat
 def tarkista_ojalla_olevat_apinat():
