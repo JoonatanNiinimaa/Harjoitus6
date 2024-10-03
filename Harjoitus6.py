@@ -57,8 +57,6 @@ kernest_ojan_x2 = kernest_ojan_x1  # Oja jatkuu suoraan ylös
 kernest_ojan_y2 = kernest_ojan_y1 - 100  # Oja on 100 pikseliä pitkä ja menee ylös
 canvas.create_line(kernest_ojan_x1, kernest_ojan_y1, kernest_ojan_x2, kernest_ojan_y2, fill="sandy brown", width=2)
 
-ojat = [(ernest_ojan_x1, ernest_ojan_y1 - 100), (kernest_ojan_x1, kernest_ojan_y1 - 100)]
-
 # Lisätään metsäalueet saarelle kolmessa kohtaa käyttäen viidakko.png kuvaa
 metsan_paikat = [(230, 250), (900, 300), (800, 500)]  # Sijainnit metsäalueille
 for (x, y) in metsan_paikat:
@@ -72,20 +70,20 @@ kernesti = canvas.create_image(*kernesti_pos, image=kernesti_img)
 
 # Apinat metsään
 apinat = []
-apina_lkm = 5  # Määrä apinoita, voi muuttaa
+apina_lkm = 10  # Määrä apinoita, voi muuttaa
 
 for i in range(apina_lkm):
     metsa_x, metsa_y = random.choice(metsan_paikat)  # Valitaan satunnaisesti metsäalue
     apinan_pos = (metsa_x + random.randint(-50, 50), metsa_y + random.randint(-50, 50))  # Pieni satunnaisuus sijaintiin
     apina = canvas.create_image(*apinan_pos, image=monkey_img)
-    apinat.append({'image': apina, 'has_shovel': False, 'ojalla': False})  # Apinan kuva ja lapion tila
+    apinat.append({'image': apina, 'has_shovel': False, 'ojalla': False, 'kaivamis_index': None})  # Apinan kuva, lapion tila ja kaivamisen indeksi
 
 # Liikuttaminen kohti kohdetta
 def liiku_objekti(objekti, kohde_x, kohde_y):
-    while True:  # Jatka liikuttamista kunnes saavutetaan kohde
+    while True:  # Jatka liikuttamista kunnes saavutaan kohde
         obj_x, obj_y = canvas.coords(objekti)  # Nykyinen sijainti
         if abs(obj_x - kohde_x) < 1 and abs(obj_y - kohde_y) < 1:
-            canvas.coords(objekti, kohde_x, kohde_y)  # Varmista, että saavutetaan tarkka kohde
+            canvas.coords(objekti, kohde_x, kohde_y)  # Varmista, että saavutaan tarkka kohde
             break  # Lopeta liikkuminen, jos olemme riittävän lähellä
         uusi_x = obj_x + (kohde_x - obj_x) / 10  # Muuta divisoria suuremmaksi nopeammaksi liikkeeksi
         uusi_y = obj_y + (kohde_y - obj_y) / 10  # Muuta divisoria suuremmaksi nopeammaksi liikkeeksi
@@ -117,37 +115,144 @@ def ernest_opastaa_apinaa():
         threading.Thread(target=liiku_objekti, args=(ernesti, apina_x, apina_y)).start()  # Ernesti liikkuu apinan luo
 
         # Kun Ernesti on saapunut apinalle, anna lapio
-        root.after(1000, lambda: anna_lapio(closest_apina, apina_image))
+        root.after(1000, lambda: e_anna_lapio(closest_apina, apina_image))
 
-# Lista käytettävistä y-koordinaateista
-kaytetyt_y_koordinaatit = []
+def kernest_opastaa_apinaa():
+    if apinat:  # Jos on joutilaita apinoita
+        # Etsi lähin apina, joka ei ole ojalla
+        apina_distances = []
+        kernest_x, kernest_y = canvas.coords(kernesti)  # Ernestin sijainti
+        for apina in apinat:
+            if not apina['ojalla']:  # Tarkistetaan, ettei apina ole ojalla
+                apina_x, apina_y = canvas.coords(apina['image'])
+                distance = ((kernest_x - apina_x) ** 2 + (kernest_y - apina_y) ** 2) ** 0.5
+                apina_distances.append((distance, apina))
 
-def anna_lapio(apina, apina_image):
+        if not apina_distances:
+            print("Kaikki apinat ovat jo ojalla!")
+            return
+        
+        # Lajittele etäisyyksien mukaan ja ota lähin apina
+        apina_distances.sort(key=lambda x: x[0])
+        closest_apina = apina_distances[0][1]
+
+        # Siirrä Kernesti lähimmän apinan luo
+        apina_image = closest_apina['image']
+        apina_x, apina_y = canvas.coords(apina_image)  # Apinan sijainti
+        threading.Thread(target=liiku_objekti, args=(kernesti, apina_x, apina_y)).start()  # Kernesti liikkuu apinan luo
+
+        # Kun Kernesti on saapunut apinalle, anna lapio
+        root.after(1000, lambda: k_anna_lapio(closest_apina, apina_image))
+
+# Lisätään uusi nappi kaivamisen aloittamiseksi
+def kaivaa(apina):
+    oja_index = apina['kaivamis_index']  # Ota apinan nykyinen kaivamisindeksi
+    if oja_index is not None and oja_index < len(ernestin_oja_matriisi):  # Kunnes kaivamme koko ojan
+        # Varmista, että oja on vielä "hiekkaa" (arvo 1)
+        if ernestin_oja_matriisi[oja_index][0] == 1:
+            # Muutetaan ojan arvo nollaksi
+            ernestin_oja_matriisi[oja_index][0] = 0
+
+            # Soita ääni
+            winsound.Beep(1000, 100)  # Esimerkiksi 1000 Hz 100 ms
+            print(f"Kaivettu ojan kohdasta: {oja_index}")
+
+            # Siirrä apina ojan varrella
+            uusi_y = ernest_ojan_y1 - (oja_index * (100 / len(ernestin_oja_matriisi)))  # Skaalataan y-koordinaatti
+            canvas.coords(apina['image'], ernest_ojan_x1, uusi_y)  # Siirretään apina ojalle
+
+            # Vähennä indeksiä
+            apina['kaivamis_index'] += 1  # Lisää indeksiä, että seuraava askel ylös
+            
+            # Ajan laskeminen väsymisen mukaan
+            kaivamis_aika = 1 * (2 ** (apina['kaivamis_index'] - 1))  # Jokaisen seuraavan metrin kaivamiseen menee kaksinkertainen aika
+            
+            # Rajaa kaivamis_aika maksimiin, esimerkiksi 30 sekuntiin
+            if kaivamis_aika > 30:
+                kaivamis_aika = 30
+
+            # Odota apinan kaivamisajan verran käyttäen after-funktiota
+            root.after(int(kaivamis_aika * 1000), lambda: kaivaa(apina))  # Kutsu uudelleen kaivamista
+        else:
+            print("Oja on jo kaivettu, ei voida kaivaa.")
+    else:
+        print("Kaivaminen valmis.")
+
+def e_anna_lapio(apina, apina_image):
     # Anna apinalle lapio
     apina['has_shovel'] = True
     print("Apina on saanut lapion:", apina)
 
-    # Merkitse apina ojalla olevan
-    apina['ojalla'] = True
+    # Merkitse apina ojalla olevan ja tallenna indeksi
+    apina['ojalla'] = True  # Apina on nyt ojalla
+    apina['kaivamis_index'] = random.randint(0, len(ernestin_oja_matriisi) - 1)  # Aloita kaivaminen satunnaisesta kohdasta
 
-    # Määritä satunnainen y-koordinaatti, joka ei ole käytössä
-    uusi_x = ernest_ojan_x1  # x-koordinaatti pysyy vakiona ojan kohdalla
-    uusi_y = ernest_ojan_y1 - random.randint(10, 90)  # Satunnainen y-koordinaatti ojan alueella
+    # Siirrä apina ojan kohdalle
+    uusi_x = ernest_ojan_x1  # X-koordinaatti pysyy vakiona ojan kohdalla
+    uusi_y = ernest_ojan_y1 - (apina['kaivamis_index'] * (100 / len(ernestin_oja_matriisi)))  # Apinan y-koordinaatti ojan alueella
 
-    # Varmista, että y-koordinaatti ei ole jo käytössä
-    while uusi_y in kaytetyt_y_koordinaatit:
-        uusi_y = ernest_ojan_y1 - random.randint(10, 90)  # Etsi uusi satunnainen y-koordinaatti
+    threading.Thread(target=liiku_objekti, args=(apina_image, uusi_x, uusi_y)).start()  # Siirrä apina ojalle
 
-    # Lisää uusi y-koordinaatti käytetyksi
-    kaytetyt_y_koordinaatit.append(uusi_y)
+# Lisätään kaivamispainike
+def k_anna_lapio(apina, apina_image):
+    # Anna apinalle lapio
+    apina['has_shovel'] = True
+    print("Apina on saanut lapion:", apina)
 
-    # Siirrä apina ojalle
-    threading.Thread(target=liiku_objekti, args=(apina_image, uusi_x, uusi_y)).start()  # Apina liikkuu ojaan
+    # Merkitse apina ojalla olevan ja tallenna indeksi
+    apina['ojalla'] = True  # Apina on nyt ojalla
+    apina['kaivamis_index'] = random.randint(0, len(kernestin_oja_matriisi) - 1)  # Aloita kaivaminen satunnaisesta kohdasta
 
+    # Siirrä apina ojan kohdalle
+    uusi_x = kernest_ojan_x1  # X-koordinaatti pysyy vakiona ojan kohdalla
+    uusi_y = kernest_ojan_y1 - (apina['kaivamis_index'] * (100 / len(kernestin_oja_matriisi)))  # Apinan y-koordinaatti ojan alueella
 
-# Käynnistetään käyttöliittymä
-opasta_apinaa_button = tk.Button(root, text="Hae apina ja anna lapio", command=ernest_opastaa_apinaa)
+    threading.Thread(target=liiku_objekti, args=(apina_image, uusi_x, uusi_y)).start()  # Siirrä apina ojalle
+
+# Aloita kaivaminen
+def e_aloita_kaivaminen():
+    for apina in apinat:
+        if apina['has_shovel'] and apina['ojalla']:  # Tarkista, onko apinalla lapio ja että se on ojalla
+            apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
+            kaivaa(apina)  # Aloita kaivaminen
+        else:
+            print("Ei yhtään apinaa, jolla on lapio.")
+
+def k_aloita_kaivaminen():
+    for apina in apinat:
+        if apina['has_shovel'] and apina['ojalla']:  # Tarkista, onko apinalla lapio ja että se on ojalla
+            apina['kaivamis_index'] = apina['kaivamis_index']  # Aloita kaivaminen ajankohtaisesta kohdasta
+            kaivaa(apina)  # Aloita kaivaminen
+        else:
+            print("Ei yhtään apinaa, jolla on lapio.")
+
+# Tarkista ojalla olevat apinat
+def tarkista_ojalla_olevat_apinat():
+    ojalla_olevat_apinat = [apina for apina in apinat if apina['ojalla']]
+    if ojalla_olevat_apinat:
+        print("Ojalla olevat apinat:")
+        for i, apina in enumerate(ojalla_olevat_apinat):
+            print(f"Apina {i + 1}: {apina}")
+    else:
+        print("Ei yhtään apinaa ojalla.")
+
+# Lisää nappi tarkistaakseen ojalla olevat apinat
+tarkista_button = tk.Button(root, text="Tarkista ojalla olevat apinat", command=tarkista_ojalla_olevat_apinat)
+tarkista_button.pack(pady=20)  # Lisätään painike ikkunaan
+
+# Ernesti opastaa apinaa
+opasta_apinaa_button = tk.Button(root, text="Ernesti hakee apinan ja antaa lapio", command=ernest_opastaa_apinaa)
 opasta_apinaa_button.pack(pady=20)  # Lisätään painike ikkunaan
+# Lisätään kaivamispainike
+kaiva_button = tk.Button(root, text="Aloita Ernestin ojan kaivaminen", command=lambda: e_aloita_kaivaminen())
+kaiva_button.pack(pady=20)  # Lisätään kaivamispainike
+
+# Kernesti opastaa apinaa
+opasta_apinaa_button = tk.Button(root, text="Kernesti hakee apinan ja antaa lapio", command=kernest_opastaa_apinaa)
+opasta_apinaa_button.pack(pady=20)  # Lisätään painike ikkunaan
+# Lisätään kaivamispainike
+kaiva_button = tk.Button(root, text="Aloita Kernestin ojan kaivaminen", command=lambda: k_aloita_kaivaminen())
+kaiva_button.pack(pady=20)  # Lisätään kaivamispainike
 
 root.mainloop()
 
