@@ -97,29 +97,50 @@ def paivita_oja_visuals():
 
     print("Oja on päivitetty visuaalisesti.")
 
+# Tilamuuttujat meriveden äänen toistamiseksi vain kerran
+ernestin_oja_ready = False
+kernestin_oja_ready = False
+first_ready_oja = None  # Tallennetaan ensimmäisenä valmistunut oja
+
 def tarkista_uima_allas():
+    global ernestin_oja_ready, kernestin_oja_ready, first_ready_oja
     while True:
         # Tarkista, onko molemmat ojat tyhjentyneet
         oja1_kaivettu = all(section[0] <= 0 for section in ernestin_oja_matriisi)
         oja2_kaivettu = all(section[0] <= 0 for section in kernestin_oja_matriisi)
 
         # Tarkista ja muuta Ernestin oja siniseksi, jos kaikki sen osat ovat tyhjentyneet
-        if oja1_kaivettu:
+        if oja1_kaivettu and not ernestin_oja_ready:
             print("Ernestin oja muuttuu siniseksi, koska kaikki osat ovat tyhjentyneet.")
             canvas.create_line(ernest_ojan_x1, ernest_ojan_y1, ernest_ojan_x2, ernest_ojan_y2, fill="blue")
+            winsound.PlaySound("meri.wav", winsound.SND_FILENAME)
+            ernestin_oja_ready = True  # Merkitään, että ääni on soitettu
+            if first_ready_oja is None:  # Jos tämä on ensimmäinen valmis oja
+                first_ready_oja = "Ernesti"
 
         # Tarkista ja muuta Kernestin oja siniseksi, jos kaikki sen osat ovat tyhjentyneet
-        if oja2_kaivettu:
+        if oja2_kaivettu and not kernestin_oja_ready:
             print("Kernestin oja muuttuu siniseksi, koska kaikki osat ovat tyhjentyneet.")
             canvas.create_line(kernest_ojan_x1, kernest_ojan_y1, kernest_ojan_x2, kernest_ojan_y2, fill="blue")
-       
+            winsound.PlaySound("meri.wav", winsound.SND_FILENAME)
+            kernestin_oja_ready = True  # Merkitään, että ääni on soitettu
+            if first_ready_oja is None:  # Jos tämä on ensimmäinen valmis oja
+                first_ready_oja = "Kernesti"
+
         # Muuta uima-allasta siniseksi, jos molemmat ojat ovat tyhjät
         if oja1_kaivettu and oja2_kaivettu:
             print("Uima-allas muuttuu siniseksi, koska molemmat ojat ovat tyhjät.")
             canvas.create_rectangle(uima_allas_x1, uima_allas_y1, uima_allas_x2, uima_allas_y2, fill="blue")
+            winsound.PlaySound("uimavesi.wav", winsound.SND_FILENAME)
+            # Ilmaise äänimerkillä kumpi oja valmistui ensimmäisenä
+            if first_ready_oja == "Ernesti":
+                print("Ernestin oja oli ensimmäisenä valmis. Soitetaan matala ääni.")
+                winsound.Beep(400, 10000)  # 400 Hz, 10 sekuntia
+            elif first_ready_oja == "Kernesti":
+                print("Kernestin oja oli ensimmäisenä valmis. Soitetaan kimeä ääni.")
+                winsound.Beep(1000, 10000)  # 1000 Hz, 10 sekuntia
             break  # Lopeta silmukka, kun allas on muutettu
         time.sleep(1)  # Odota hetki ennen seuraavaa tarkistusta
-
 # Luodaan ja käynnistetään säie uima-allaan tarkistamiseen
 uima_allas_tarkistus_säie = threading.Thread(target=tarkista_uima_allas)
 uima_allas_tarkistus_säie.start()
@@ -137,7 +158,7 @@ kernesti = canvas.create_image(*kernesti_pos, image=kernesti_img)
 
 # Apinat metsään
 apinat = []
-apina_lkm = 100  # Määrä apinoita, voi muuttaa
+apina_lkm = 30  # Määrä apinoita, voi muuttaa
 
 for i in range(apina_lkm):
     metsa_x, metsa_y = random.choice(metsan_paikat)  # Valitaan satunnaisesti metsäalue
@@ -240,6 +261,7 @@ def kaivaa(apina):
 
                 if current_depth > -1:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -1
                     # Oja on "hiekkaa", apina voi kaivaa
+                    winsound.Beep(500, 100)  # 500 Hz taajuus, 100 ms kesto
                     oja_matriisi[oja_index][0] -= 1  # Vähennetään arvoa, jotta se merkitsee kaivettua
                     print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
 
@@ -350,7 +372,7 @@ def e_aloita_fiksu_kaivaminen():
             # Anna apinalle lapio
             e_anna_lapio(apina, apina['image'])
             # Käytetään apinan oikeaa instanssia lambda-funktiossa
-            root.after(i * 1000, lambda apina=apina: e_sijoita_ja_aloita_kaivaminen(apina))
+            root.after(i * 2000, lambda apina=apina: e_sijoita_ja_aloita_kaivaminen(apina))
     else:
         print("Ei yhtään apinaa, jolla ei ole lapioa.")
 
