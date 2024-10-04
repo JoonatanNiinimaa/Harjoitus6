@@ -88,12 +88,12 @@ def paivita_oja_visuals():
         kaivetun_osan_y = ernest_ojan_y1 - (i * (100 / len(ernestin_oja_matriisi)))
         # Asetetaan alkuperäinen hiekan väri
         current_color = hiekan_vari(1)  # Hiekan väri syvyydellä 1
-        canvas.create_rectangle(ernest_ojan_x1, kaivetun_osan_y, ernest_ojan_x1 + 5, kaivetun_osan_y + (100 / len(ernestin_oja_matriisi)), fill=current_color, outline="")
+        canvas.create_rectangle(ernest_ojan_x1, kaivetun_osan_y, ernest_ojan_x1 + 3, kaivetun_osan_y + (100 / len(ernestin_oja_matriisi)), fill=current_color, outline="")
 
     for i in range(len(kernestin_oja_matriisi)):
         kaivetun_osan_y = kernest_ojan_y1 - (i * (100 / len(kernestin_oja_matriisi)))
         current_color = hiekan_vari(1)
-        canvas.create_rectangle(kernest_ojan_x1, kaivetun_osan_y, kernest_ojan_x1 + 20, kaivetun_osan_y + (100 / len(kernestin_oja_matriisi)), fill=current_color, outline="")
+        canvas.create_rectangle(kernest_ojan_x1, kaivetun_osan_y, kernest_ojan_x1 + 3, kaivetun_osan_y + (100 / len(kernestin_oja_matriisi)), fill=current_color, outline="")
 
     print("Oja on päivitetty visuaalisesti.")
 
@@ -103,13 +103,21 @@ def tarkista_uima_allas():
         oja1_kaivettu = all(section[0] <= 0 for section in ernestin_oja_matriisi)
         oja2_kaivettu = all(section[0] <= 0 for section in kernestin_oja_matriisi)
 
-        if oja1_kaivettu and oja2_kaivettu:
-            # Muuta uima-allasta siniseksi
-            print("Uima-allas muuttuu siniseksi, koska molemmat ojat ovat tyhjät.")
-            # Muutetaan uima-allas siniseksi
-            canvas.create_rectangle(uima_allas_x1, uima_allas_y1, uima_allas_x2, uima_allas_y2, fill="blue", outline="brown")
-            break  # Lopeta silmukka, kun allas on muutettu
+        # Tarkista ja muuta Ernestin oja siniseksi, jos kaikki sen osat ovat tyhjentyneet
+        if oja1_kaivettu:
+            print("Ernestin oja muuttuu siniseksi, koska kaikki osat ovat tyhjentyneet.")
+            canvas.create_line(ernest_ojan_x1, ernest_ojan_y1, ernest_ojan_x2, ernest_ojan_y2, fill="blue")
 
+        # Tarkista ja muuta Kernestin oja siniseksi, jos kaikki sen osat ovat tyhjentyneet
+        if oja2_kaivettu:
+            print("Kernestin oja muuttuu siniseksi, koska kaikki osat ovat tyhjentyneet.")
+            canvas.create_line(kernest_ojan_x1, kernest_ojan_y1, kernest_ojan_x2, kernest_ojan_y2, fill="blue")
+       
+        # Muuta uima-allasta siniseksi, jos molemmat ojat ovat tyhjät
+        if oja1_kaivettu and oja2_kaivettu:
+            print("Uima-allas muuttuu siniseksi, koska molemmat ojat ovat tyhjät.")
+            canvas.create_rectangle(uima_allas_x1, uima_allas_y1, uima_allas_x2, uima_allas_y2, fill="blue")
+            break  # Lopeta silmukka, kun allas on muutettu
         time.sleep(1)  # Odota hetki ennen seuraavaa tarkistusta
 
 # Luodaan ja käynnistetään säie uima-allaan tarkistamiseen
@@ -122,8 +130,8 @@ for (x, y) in metsan_paikat:
     canvas.create_image(x, y, image=viidakko_img)
 
 # Ernestin ja Kernestin paikat (säilytetään ennallaan)
-ernesti_pos = (500, 450)
-kernesti_pos = (700, 450)
+ernesti_pos = (550, 440)
+kernesti_pos = (650, 440)
 ernesti = canvas.create_image(*ernesti_pos, image=ernesti_img)
 kernesti = canvas.create_image(*kernesti_pos, image=kernesti_img)
 
@@ -217,7 +225,6 @@ def hiekan_vari(depth):
     else:
         return "#4D3B1A"  
 
-
 def kaivaa(apina):
     if apina['ojalla']:
         if apina['has_shovel']:
@@ -231,7 +238,7 @@ def kaivaa(apina):
                 # Tarkista syvyys
                 current_depth = oja_matriisi[oja_index][0]
 
-                if current_depth > -5:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -2
+                if current_depth > -1:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -1
                     # Oja on "hiekkaa", apina voi kaivaa
                     oja_matriisi[oja_index][0] -= 1  # Vähennetään arvoa, jotta se merkitsee kaivettua
                     print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
@@ -239,9 +246,6 @@ def kaivaa(apina):
                     # Muuta hiekan väriä syvyyden mukaan
                     depth = oja_matriisi[oja_index][0]  # Käytetään matriisin arvoa syvyyden määrittämiseen
                     kaivetun_osan_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Laske y-koordinaatti
-                    current_color = hiekan_vari(depth)  # Hae hiekan väri syvyyden mukaan
-                    canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 5, kaivetun_osan_y + (100 / len(oja_matriisi)), fill=current_color, outline="")
-
                 else:
                     # Oja on jo kaivettu tai syvyys on negatiivinen
                     print(f"{apina['nimi']} ei voi kaivaa enää, oja on jo valmis kohdassa {oja_index}.")
@@ -261,7 +265,7 @@ def kaivaa(apina):
                         # Muuta koko oja siniseksi, kun kaikki on kaivettu
                         for i in range(len(oja_matriisi)):
                             kaivetun_osan_y = oja_y1 - (i * (100 / len(oja_matriisi)))  # Laske y-koordinaatti
-                            canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 5, kaivetun_osan_y + (100 / len(oja_matriisi)), fill="blue", outline="")
+                            canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 20, kaivetun_osan_y + (100 / len(oja_matriisi)), fill="blue", outline="")
                         print(f"{apina['nimi']} on valmis kaivamisessa. Kaikki on kaivettu!")
                     else:
                         print(f"{apina['nimi']} on valmis kaivamisessa, mutta kaikki ojan osat eivät ole kaivettu vielä.")
@@ -459,13 +463,13 @@ def tarkista_ojamatriisi():
 
 # Lisää nappi tarkistaakseen ojalla olevat apinat
 tarkista_button = tk.Button(root, text="Tarkista ojalla olevat apinat", command=tarkista_ojalla_olevat_apinat)
-canvas.create_window(600, 200, window=tarkista_button)
+canvas.create_window(600, 150, window=tarkista_button)
 
 tarkista_ojamatriisi =tk.Button(root, text="Tarkista ojien arvot",command=tarkista_ojamatriisi)
-canvas.create_window(600, 175, window=tarkista_ojamatriisi)
+canvas.create_window(600, 200, window=tarkista_ojamatriisi)
 
 tayta_oja_button = tk.Button(root, text="Täytä ojat", command=tayta_ja_nollaa_oja)
-canvas.create_window(600, 150, window=tayta_oja_button)
+canvas.create_window(600, 250, window=tayta_oja_button)
 
 # Ernesti opastaa apinaa
 e_opasta_apinaa_button = tk.Button(root, text="Ernesti hakee apinan ja antaa lapio", command=ernest_opastaa_apinaa)
