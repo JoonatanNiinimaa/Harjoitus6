@@ -150,13 +150,3 @@ opasta_apinaa_button = tk.Button(root, text="Hae apina ja anna lapio", command=e
 opasta_apinaa_button.pack(pady=20)  # Lisätään painike ikkunaan
 
 root.mainloop()
-
-# Tulostetaan matriisit tarkistusta varten
-print("Uima-altaan matriisi (tyhjä allas):")
-print(allas_matriisi)
-
-print("\nErnestin ojan matriisi (täynnä hiekkaa, arvo 1):")
-print(ernestin_oja_matriisi)
-
-print("\nKernestin ojan matriisi (täynnä hiekkaa, arvo 1):")
-print(kernestin_oja_matriisi)
