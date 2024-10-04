@@ -87,16 +87,34 @@ def paivita_oja_visuals():
         # Laske y-koordinaatti
         kaivetun_osan_y = ernest_ojan_y1 - (i * (100 / len(ernestin_oja_matriisi)))
         # Asetetaan alkuperäinen hiekan väri
-        current_color = get_sand_color(1)  # Hiekan väri syvyydellä 1
-        canvas.create_rectangle(ernest_ojan_x1, kaivetun_osan_y, ernest_ojan_x1 + 20, kaivetun_osan_y + (100 / len(ernestin_oja_matriisi)), fill=current_color, outline="")
+        current_color = hiekan_vari(1)  # Hiekan väri syvyydellä 1
+        canvas.create_rectangle(ernest_ojan_x1, kaivetun_osan_y, ernest_ojan_x1 + 5, kaivetun_osan_y + (100 / len(ernestin_oja_matriisi)), fill=current_color, outline="")
 
     for i in range(len(kernestin_oja_matriisi)):
         kaivetun_osan_y = kernest_ojan_y1 - (i * (100 / len(kernestin_oja_matriisi)))
-        current_color = get_sand_color(1)
+        current_color = hiekan_vari(1)
         canvas.create_rectangle(kernest_ojan_x1, kaivetun_osan_y, kernest_ojan_x1 + 20, kaivetun_osan_y + (100 / len(kernestin_oja_matriisi)), fill=current_color, outline="")
 
     print("Oja on päivitetty visuaalisesti.")
 
+def tarkista_uima_allas():
+    while True:
+        # Tarkista, onko molemmat ojat tyhjentyneet
+        oja1_kaivettu = all(section[0] <= 0 for section in ernestin_oja_matriisi)
+        oja2_kaivettu = all(section[0] <= 0 for section in kernestin_oja_matriisi)
+
+        if oja1_kaivettu and oja2_kaivettu:
+            # Muuta uima-allasta siniseksi
+            print("Uima-allas muuttuu siniseksi, koska molemmat ojat ovat tyhjät.")
+            # Muutetaan uima-allas siniseksi
+            canvas.create_rectangle(uima_allas_x1, uima_allas_y1, uima_allas_x2, uima_allas_y2, fill="blue", outline="brown")
+            break  # Lopeta silmukka, kun allas on muutettu
+
+        time.sleep(1)  # Odota hetki ennen seuraavaa tarkistusta
+
+# Luodaan ja käynnistetään säie uima-allaan tarkistamiseen
+uima_allas_tarkistus_säie = threading.Thread(target=tarkista_uima_allas)
+uima_allas_tarkistus_säie.start()
 
 # Lisätään metsäalueet saarelle kolmessa kohtaa käyttäen viidakko.png kuvaa
 metsan_paikat = [(425, 325), (775, 300), (750, 420)]  # Sijainnit metsäalueille
@@ -185,18 +203,20 @@ def kernest_opastaa_apinaa():
         # Kun Kernesti on saapunut apinalle, anna lapio
         root.after(1000, lambda: k_anna_lapio(closest_apina, apina_image))
 
-# Lisätään uusi nappi kaivamisen aloittamiseksi
-# Hiekka väri
-def get_sand_color(depth):
-    """Määritä hiekan väri syvyyden mukaan."""
+def hiekan_vari(depth):
     if depth == 1:
         return "#D1A55D"  # Pinnallinen hiekkakerros
     elif depth == 0:
         return "#B5944D"  # Ensimmäinen kaivettu kerros
     elif depth == -1:
-        return "#A07D3D"  # Syvempi kerros
+        return "#A07D3D"  
+    elif depth == -2:
+        return "#7B6A2B"  
+    elif depth == -3:
+        return "#6e5424"  
     else:
-        return "#8B6B2D"  # Syvin kerros
+        return "#4D3B1A"  
+
 
 def kaivaa(apina):
     if apina['ojalla']:
@@ -211,7 +231,7 @@ def kaivaa(apina):
                 # Tarkista syvyys
                 current_depth = oja_matriisi[oja_index][0]
 
-                if current_depth > -2:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -2
+                if current_depth > -5:  # Voidaan kaivaa, jos syvyys on suurempi tai yhtä suuri kuin -2
                     # Oja on "hiekkaa", apina voi kaivaa
                     oja_matriisi[oja_index][0] -= 1  # Vähennetään arvoa, jotta se merkitsee kaivettua
                     print(f"{apina['nimi']}n apina kaivoi ojan kohdasta: {oja_index}")
@@ -219,7 +239,7 @@ def kaivaa(apina):
                     # Muuta hiekan väriä syvyyden mukaan
                     depth = oja_matriisi[oja_index][0]  # Käytetään matriisin arvoa syvyyden määrittämiseen
                     kaivetun_osan_y = oja_y1 - (oja_index * (100 / len(oja_matriisi)))  # Laske y-koordinaatti
-                    current_color = get_sand_color(depth)  # Hae hiekan väri syvyyden mukaan
+                    current_color = hiekan_vari(depth)  # Hae hiekan väri syvyyden mukaan
                     canvas.create_rectangle(oja_x1, kaivetun_osan_y, oja_x1 + 5, kaivetun_osan_y + (100 / len(oja_matriisi)), fill=current_color, outline="")
 
                 else:
@@ -313,6 +333,114 @@ def k_aloita_kaivaminen():
     else:
         print("Ei yhtään Ernestin apinaa, jolla on lapio.")
 
+def e_aloita_fiksu_kaivaminen():
+    """Aloittaa fiksun kaivamislogiikan ja rajoittaa apinoiden määrän 10 apinaan."""
+    kaivettavat_apinat = [apina for apina in apinat if not apina.get('has_shovel')]  # Suodata apinat, joilla ei ole lapioa
+
+    # Ota vain 10 apinaa
+    kaivettavat_apinat = kaivettavat_apinat[:10]  # Rajoita 10 apinaan
+
+    # Anna kullekin apinalle lapio ja aloita kaivaminen sekunnin välein
+    if kaivettavat_apinat:
+        for i, apina in enumerate(kaivettavat_apinat):
+            # Anna apinalle lapio
+            e_anna_lapio(apina, apina['image'])
+            # Käytetään apinan oikeaa instanssia lambda-funktiossa
+            root.after(i * 1000, lambda apina=apina: e_sijoita_ja_aloita_kaivaminen(apina))
+    else:
+        print("Ei yhtään apinaa, jolla ei ole lapioa.")
+
+def e_sijoita_ja_aloita_kaivaminen(apina):
+    """Sijoittaa apinan ojan varrelle ja aloittaa kaivamisen."""
+    # Etsi kaikki saatavilla olevat indeksi (arvo 1) ojan matriisista
+    saatavilla_olevat = [indeksi for indeksi in range(len(ernestin_oja_matriisi)) if ernestin_oja_matriisi[indeksi][0] == 1]
+
+    if saatavilla_olevat:
+        # Valitse satunnainen indeksi saatavilla olevista
+        indeksi = random.choice(saatavilla_olevat)
+
+        # Sijoita apina ojan varrelle
+        oja_x1 = ernest_ojan_x1
+        oja_y1 = ernest_ojan_y1
+        apina['kaivamis_index'] = indeksi  # Sijoitetaan apina ojan kohtaan "indeksi"
+        
+        # Määritä apinan sijainti ojan kohdalle
+        uusi_x = oja_x1  # x-koordinaatti on sama ojan kohdalla
+        uusi_y = oja_y1 - (indeksi * (100 / len(ernestin_oja_matriisi)))  # y-koordinaatti lasketaan indeksin mukaan
+        
+        # Siirrä apina oikeaan kohtaan
+        threading.Thread(target=liiku_objekti, args=(apina['image'], uusi_x, uusi_y)).start()
+        
+        # Aloita kaivaminen
+        kaivaa(apina)
+        
+        # Muutetaan ojan matriisin arvo 0:ksi, koska kaivaminen alkaa
+        ernestin_oja_matriisi[indeksi][0] = 0
+
+        # Siirrä seuraava apina 1 sekunnin kuluttua
+        root.after(1000, lambda: e_sijoita_ja_aloita_kaivaminen(apina))  # Jatketaan seuraavaan satunnaiseen paikkaan
+    else:
+        piilota_apina(apina)  # Kutsu piilota_apina-funktiota
+
+def k_aloita_fiksu_kaivaminen():
+    """Aloittaa fiksun kaivamislogiikan ja rajoittaa apinoiden määrän 10 apinaan."""
+    kaivettavat_apinat = [apina for apina in apinat if not apina.get('has_shovel')]  # Suodata apinat, joilla ei ole lapioa
+
+    # Ota vain 10 apinaa
+    kaivettavat_apinat = kaivettavat_apinat[:10]  # Rajoita 10 apinaan
+
+    # Anna kullekin apinalle lapio ja aloita kaivaminen
+    if kaivettavat_apinat:
+        for i, apina in enumerate(kaivettavat_apinat):
+            # Anna apinalle lapio
+            k_anna_lapio(apina, apina['image'])
+            # Käytetään apinan oikeaa instanssia lambda-funktiossa
+            root.after(i * 1000, lambda apina=apina: k_sijoita_ja_aloita_kaivaminen(apina))
+    else:
+        print("Ei yhtään apinaa, jolla ei ole lapioa.")
+
+def k_sijoita_ja_aloita_kaivaminen(apina):
+    """Sijoittaa apinan ojan varrelle ja aloittaa kaivamisen."""
+    # Etsi kaikki saatavilla olevat indeksi (arvo 1) ojan matriisista
+    saatavilla_olevat = [indeksi for indeksi in range(len(kernestin_oja_matriisi)) if kernestin_oja_matriisi[indeksi][0] == 1]
+
+    if saatavilla_olevat:
+        # Valitse satunnainen indeksi saatavilla olevista
+        indeksi = random.choice(saatavilla_olevat)
+
+        # Sijoita apina ojan varrelle
+        oja_x1 = kernest_ojan_x1
+        oja_y1 = kernest_ojan_y1
+        apina['kaivamis_index'] = indeksi  # Sijoitetaan apina ojan kohtaan "indeksi"
+        
+        # Määritä apinan sijainti ojan kohdalle
+        uusi_x = oja_x1  # x-koordinaatti on sama ojan kohdalla
+        uusi_y = oja_y1 - (indeksi * (100 / len(kernestin_oja_matriisi)))  # y-koordinaatti lasketaan indeksin mukaan
+        
+        # Siirrä apina oikeaan kohtaan
+        threading.Thread(target=liiku_objekti, args=(apina['image'], uusi_x, uusi_y)).start()
+        
+        # Aloita kaivaminen
+        kaivaa(apina)
+        
+        # Muutetaan ojan matriisin arvo 0:ksi, koska kaivaminen alkaa
+        kernestin_oja_matriisi[indeksi][0] = 0
+
+        # Siirrä seuraava apina 1 sekunnin kuluttua
+        root.after(1000, lambda: k_sijoita_ja_aloita_kaivaminen(apina))  # Jatketaan seuraavaan satunnaiseen paikkaan
+    else:
+        piilota_apina(apina)  # Kutsu piilota_apina-funktiota
+
+def piilota_apina(apina):
+    """Piilottaa apinan canvasista."""
+    if 'image' in apina and apina['image'] is not None:
+        # Piilotetaan apinan kuva
+        canvas.itemconfig(apina['image'], state='hidden')  # Tai vaihtoehtoisesti canvas.delete(apina['image'])
+        apina['image'] = None  # Nollataan kuvan viittaus
+        apina['ojalla'] = False  # Asetetaan apina pois ojalta
+        apina['kaivamis_index'] = 0  # Nollataan kaivamisindeksi
+        print(f"{apina['nimi']} on piilotettu ojalta.")
+
 # Tarkista ojalla olevat apinat
 def tarkista_ojalla_olevat_apinat():
     ojalla_olevat_apinat = [apina for apina in apinat if apina['ojalla']]
@@ -323,9 +451,18 @@ def tarkista_ojalla_olevat_apinat():
     else:
         print("Ei yhtään apinaa ojalla.")
 
+def tarkista_ojamatriisi():
+    """Tarkistaa ja palauttaa Ernestin ja Kernestin ojien arvot."""
+    # Tarkista Ernestin ojan arvot
+    print(ernestin_oja_matriisi)
+    print(kernestin_oja_matriisi)
+
 # Lisää nappi tarkistaakseen ojalla olevat apinat
 tarkista_button = tk.Button(root, text="Tarkista ojalla olevat apinat", command=tarkista_ojalla_olevat_apinat)
 canvas.create_window(600, 200, window=tarkista_button)
+
+tarkista_ojamatriisi =tk.Button(root, text="Tarkista ojien arvot",command=tarkista_ojamatriisi)
+canvas.create_window(600, 175, window=tarkista_ojamatriisi)
 
 tayta_oja_button = tk.Button(root, text="Täytä ojat", command=tayta_ja_nollaa_oja)
 canvas.create_window(600, 150, window=tayta_oja_button)
@@ -338,6 +475,10 @@ canvas.create_window(350, 150, window=e_opasta_apinaa_button)
 e_kaiva_button = tk.Button(root, text="Aloita Ernestin ojan kaivaminen", command=lambda: e_aloita_kaivaminen())
 canvas.create_window(350, 200, window=e_kaiva_button)
 
+# Ernestin Nappi fiksummalle kaivamiselle
+e_fiksu_kaiva_button = tk.Button(root, text="Fiksu Ernestin ojan kaivaminen", command=lambda:e_aloita_fiksu_kaivaminen())
+canvas.create_window(350, 250, window=e_fiksu_kaiva_button)
+
 # Kernesti opastaa apinaa
 k_opasta_apinaa_button = tk.Button(root, text="Kernesti hakee apinan ja antaa lapio", command=kernest_opastaa_apinaa)
 canvas.create_window(900, 150, window=k_opasta_apinaa_button)
@@ -345,6 +486,10 @@ canvas.create_window(900, 150, window=k_opasta_apinaa_button)
 # Lisätään kaivamispainike
 k_kaiva_button = tk.Button(root, text="Aloita Kernestin ojan kaivaminen", command=lambda: k_aloita_kaivaminen())
 canvas.create_window(900, 200, window=k_kaiva_button)
+
+# Ernestin Nappi fiksummalle kaivamiselle
+k_fiksu_kaiva_button = tk.Button(root, text="Fiksu Kernestin ojan kaivaminen", command=lambda:k_aloita_fiksu_kaivaminen())
+canvas.create_window(900, 250, window=k_fiksu_kaiva_button)
 
 root.mainloop()
 
